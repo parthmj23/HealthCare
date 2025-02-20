@@ -1,25 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchDoctors, fetchPatientById } from '../Services/Api'; 
+import { fetchDoctors, fetchPatientId } from '../Services/Api';
 
-const HomePage = () => {  
+const HomePage = () => {
   const [doctors, setDoctors] = useState([]);
-  const [patientData, setPatientData] = useState(null); 
+  const [patientData, setPatientData] = useState(null);
   const navigate = useNavigate();
 
   const getDoctors = async () => {
     try {
       const response = await fetchDoctors();
-      setDoctors(response.data); 
+      setDoctors(response?.data || []);
     } catch (error) {
       console.error('Error fetching doctors:', error);
     }
   };
 
-  const getPatientId = async (id) => {
+  const getPatientId = async () => {
     try {
-      const response = await fetchPatientById(id); 
-      setPatientData(response.data);  
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        throw new Error('No authentication token found.');
+      }
+
+      const response = await fetchPatientId();
+      if (response?.id) {
+        setPatientData({ id: response.id });
+      } else {
+        console.error('Patient ID not found in response:', response);
+      }
     } catch (error) {
       console.error('Error fetching patient ID:', error);
     }
@@ -27,50 +37,84 @@ const HomePage = () => {
 
   useEffect(() => {
     getDoctors();
-    const id = localStorage.getItem('patientId'); 
-    if (id) {
-      getPatientId(id);  
-    } else {
-      console.error('Patient ID is not available.');
-    }
+    getPatientId();
   }, []);
 
   const handleRequestConsultation = () => {
-    navigate('/consultation/request');  
+    navigate('/consultation/request');
+  };
+
+  const handleViewConsultations = () => {
+    navigate('/PatientConsultations');
   };
 
   return (
-    <div>
-      <h1>Welcome to the Consultation App</h1>
-      <p>This app allows you to request consultations with doctors.</p>
+    <div
+      className="min-h-screen bg-cover bg-center"
+      style={{ backgroundImage: "url('https://images.unsplash.com/photo-1588774069265-3ebdc0cfa51f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080')" }}
+    >
+      <div className="bg-white bg-opacity-80 min-h-screen p-4">
+        <nav className="bg-blue-600 text-white p-4 mb-6 shadow-md">
+          <ul className="flex justify-between items-center">
+            <li className="flex space-x-8">
+              <button
+                onClick={handleRequestConsultation}
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                Request Consultation
+              </button>
+              <button
+                onClick={handleViewConsultations}
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                View My Consultations
+              </button>
+            </li>
+            {patientData && (
+              <li className="text-gray-200">
+                <span>Patient ID: {patientData.id}</span>
+              </li>
+            )}
+          </ul>
+        </nav>
 
-      <div style={{
-        position: 'absolute',
-        top: '20px',
-        right: '20px',
-        backgroundColor: '#f8f9fa',
-        padding: '10px',
-        borderRadius: '5px',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-      }}>
-        <strong>Patient ID:</strong> {patientData ? patientData.id : 'Loading...'}
-      </div>
+        <main className="px-4">
+          <h1 className="text-4xl font-bold text-black text-center mb-6">
+            Welcome to the Consultation App
+          </h1>
+          <p className="text-lg text-black text-center mb-10">
+            This platform allows you to request consultations with doctors and track their status.
+          </p>
 
-      <button onClick={handleRequestConsultation}>Request Consultation</button>
+          <h2 className="text-2xl font-semibold text-gray-800 text-center mb-6">
+            Available Doctors
+          </h2>
 
-      <h2>Available Doctors</h2>
-      <div className="doctors-list">
-        {doctors.length > 0 ? (
-          doctors.map(doctor => (
-            <div key={doctor.id} className="doctor-card">
-              <h3>{doctor.name}</h3>
-              <p>Specialization: {doctor.specialization}</p>
-              <p>ID: {doctor.id}</p>
-            </div>
-          ))
-        ) : (
-          <p>No doctors available at the moment.</p>
-        )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {doctors.length > 0 ? (
+              doctors.map((doctor) => (
+                <div
+                  key={doctor.id}
+                  className="bg-white shadow-md rounded-lg p-6 hover:shadow-xl transition-shadow"
+                >
+                  <h3 className="text-xl font-medium text-blue-600 mb-3">
+                    {doctor.name}
+                  </h3>
+                  <p className="text-gray-700 mb-2">
+                    <strong>Specialization:</strong> {doctor.specialization}
+                  </p>
+                  <p className="text-gray-700">
+                    <strong>ID:</strong> {doctor.id}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-700 text-center col-span-full">
+                No doctors available at the moment.
+              </p>
+            )}
+          </div>
+        </main>
       </div>
     </div>
   );
